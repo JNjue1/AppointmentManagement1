@@ -104,8 +104,16 @@ class RegisterActivity : AppCompatActivity() {
         // Stop if any validation checks failed
         if (!isValid) return
 
-        // Registration successful message
         Toast.makeText(this, "Registration successful!", Toast.LENGTH_SHORT).show()
+
+        // Create an Intent to return the registered email back to LoginActivity
+        val resultIntent = Intent().apply {
+            putExtra("REGISTERED_EMAIL", email)
+        }
+        // Set the activity result code and bundle data
+        setResult(RESULT_OK, resultIntent)
+
+        // Close RegisterActivity and return to LoginActivity
         finish()
     }
 }
