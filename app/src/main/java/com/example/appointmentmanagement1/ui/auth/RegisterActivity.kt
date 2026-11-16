@@ -1,9 +1,10 @@
-package com.example.appointmentmanagementsystem.ui.auth
+package com.example.appointmentmanagement1.ui.auth
 
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.appointmentmanagementsystem.databinding.ActivityRegisterBinding
+import com.example.appointmentmanagement1.databinding.ActivityRegisterBinding
+import android.content.Intent
 
 /**
  * Handles new patient registration with input validation.
