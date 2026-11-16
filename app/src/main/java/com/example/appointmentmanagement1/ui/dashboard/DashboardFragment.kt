@@ -1,11 +1,11 @@
-package com.example.appointmentmanagementsystem.ui.dashboard
+package com.example.appointmentmanagement1.ui.dashboard
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import com.example.appointmentmanagementsystem.databinding.FragmentDashboardBinding
+import com.example.appointmentmanagement1.databinding.FragmentDashboardBinding
 
 /**
  * Fragment presenting system summary statistics and quick navigation actions.

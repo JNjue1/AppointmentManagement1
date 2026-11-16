@@ -1,11 +1,11 @@
-package com.example.appointmentmanagementsystem.ui.appointments
+package com.example.appointmentmanagement1.ui.appointments
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import com.example.appointmentmanagementsystem.databinding.FragmentMyAppointmentsBinding
+import com.example.appointmentmanagement1.databinding.FragmentMyAppointmentsBinding
 
 /**
  * Fragment displaying the list of all scheduled appointments.

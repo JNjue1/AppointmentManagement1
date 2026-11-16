@@ -1,11 +1,11 @@
-package com.example.appointmentmanagementsystem.ui.booking
+package com.example.appointmentmanagement1.ui.booking
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import com.example.appointmentmanagementsystem.databinding.FragmentBookAppointmentBinding
+import com.example.appointmentmanagement1.databinding.FragmentBookAppointmentBinding
 
 /**
  * Fragment containing the form inputs to book a new appointment.
