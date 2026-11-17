@@ -15,6 +15,7 @@ import com.example.appointmentmanagement1.model.AppointmentStatus
 import com.example.appointmentmanagement1.repository.AppointmentRepository
 import java.util.Calendar
 import java.util.Locale
+import androidx.navigation.fragment.findNavController
 
 /**
  * Fragment containing the form inputs to book a new appointment.
@@ -216,6 +217,11 @@ class BookAppointmentFragment : Fragment() {
             "Appointment scheduled successfully!",
             Toast.LENGTH_SHORT
         ).show()
+
+        // Use Safe Args direction to navigate to My Appointments and pass the new record
+        val action = BookAppointmentFragmentDirections
+            .actionBookAppointmentToMyAppointments(newAppointment = newAppointment)
+        findNavController().navigate(action)
     }
 
     override fun onDestroyView() {
