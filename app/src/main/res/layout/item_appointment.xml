@@ -6,7 +6,7 @@
     <data>
         <variable
             name="appointment"
-            type="com.example.appointmentmanagement.model.Appointment" />
+            type="com.example.appointmentmanagement1.model.Appointment" />
     </data>
 
     <com.google.android.material.card.MaterialCardView
