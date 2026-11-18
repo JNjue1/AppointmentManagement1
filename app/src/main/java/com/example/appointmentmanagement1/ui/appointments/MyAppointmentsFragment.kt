@@ -1,28 +1,31 @@
 package com.example.appointmentmanagement1.ui.appointments
-import android.content.Intent
-import androidx.appcompat.app.AlertDialog
-import com.example.appointmentmanagement1.model.AppointmentStatus
+
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import com.example.appointmentmanagement1.databinding.DialogRescheduleBinding
-import java.util.Calendar
-import java.util.Locale
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.appointmentmanagement1.R
+import com.example.appointmentmanagement1.databinding.DialogRescheduleBinding
 import com.example.appointmentmanagement1.databinding.FragmentMyAppointmentsBinding
 import com.example.appointmentmanagement1.model.Appointment
+import com.example.appointmentmanagement1.model.AppointmentStatus
 import com.example.appointmentmanagement1.repository.AppointmentRepository
+import java.util.Calendar
+import java.util.Locale
 
 /**
- * Fragment displaying the list of all scheduled appointments.
+ * Fragment displaying the list of all scheduled appointments with real-time
+ * query search and status filtering.
  */
 class MyAppointmentsFragment : Fragment() {
 
@@ -30,6 +33,10 @@ class MyAppointmentsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var appointmentAdapter: AppointmentAdapter
+
+    // Current active filter states
+    private var currentSearchQuery: String = ""
+    private var selectedStatusFilter: AppointmentStatus? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -45,17 +52,14 @@ class MyAppointmentsFragment : Fragment() {
 
         setupRecyclerView()
         setupListeners()
+        setupSearchAndFilters()
     }
 
     override fun onResume() {
         super.onResume()
-        // Reload appointments from repository to capture newly booked or updated records
-        loadAppointments()
+        applyFilters()
     }
 
-    /**
-     * Initializes the RecyclerView with LinearLayoutManager and AppointmentAdapter.
-     */
     private fun setupRecyclerView() {
         appointmentAdapter = AppointmentAdapter(
             appointments = mutableListOf(),
@@ -79,25 +83,63 @@ class MyAppointmentsFragment : Fragment() {
         }
     }
 
-    /**
-     * Configures button actions on the screen.
-     */
     private fun setupListeners() {
-        // Floating action button routes to BookAppointmentFragment
         binding.fabBookAppointment.setOnClickListener {
             findNavController().navigate(R.id.action_myAppointments_to_bookAppointment)
         }
     }
 
     /**
-     * Queries the singleton repository and synchronizes data with the adapter.
+     * Attaches query listeners to SearchView and check listeners to the status ChipGroup.
      */
-    private fun loadAppointments() {
-        val list = AppointmentRepository.getAllAppointments()
-        appointmentAdapter.updateData(list)
+    private fun setupSearchAndFilters() {
+        // Real-time search query listener
+        binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                currentSearchQuery = query.orEmpty().trim()
+                applyFilters()
+                return true
+            }
 
-        // Toggle empty state visibility
-        if (list.isEmpty()) {
+            override fun onQueryTextChange(newText: String?): Boolean {
+                currentSearchQuery = newText.orEmpty().trim()
+                applyFilters()
+                return true
+            }
+        })
+
+        // Status chip single-selection listener
+        binding.chipGroupStatus.setOnCheckedStateChangeListener { _, checkedIds ->
+            selectedStatusFilter = when {
+                checkedIds.contains(R.id.chipBooked) -> AppointmentStatus.BOOKED
+                checkedIds.contains(R.id.chipCompleted) -> AppointmentStatus.COMPLETED
+                checkedIds.contains(R.id.chipCancelled) -> AppointmentStatus.CANCELLED
+                else -> null // "All" selected
+            }
+            applyFilters()
+        }
+    }
+
+    /**
+     * Combines query search and status criteria to filter the master repository list.
+     */
+    private fun applyFilters() {
+        val masterList = AppointmentRepository.getAllAppointments()
+
+        val filtered = masterList.filter { appointment ->
+            val matchesStatus = (selectedStatusFilter == null) || (appointment.status == selectedStatusFilter)
+            val matchesQuery = currentSearchQuery.isEmpty() ||
+                    appointment.doctorName.contains(currentSearchQuery, ignoreCase = true) ||
+                    appointment.patientName.contains(currentSearchQuery, ignoreCase = true) ||
+                    appointment.reason.contains(currentSearchQuery, ignoreCase = true)
+
+            matchesStatus && matchesQuery
+        }
+
+        appointmentAdapter.updateData(filtered)
+
+        // Empty state visibility toggle
+        if (filtered.isEmpty()) {
             binding.layoutEmptyState.visibility = View.VISIBLE
             binding.rvAppointments.visibility = View.GONE
         } else {
@@ -108,29 +150,39 @@ class MyAppointmentsFragment : Fragment() {
 
     private fun handleCallClick(appointment: Appointment) {
         val phoneNumber = appointment.phone.trim()
-
         if (phoneNumber.isEmpty()) {
             Toast.makeText(requireContext(), "No phone number available", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Create an implicit intent targeted at the telephone dialer
         val dialIntent = Intent(Intent.ACTION_DIAL).apply {
             data = Uri.parse("tel:$phoneNumber")
         }
-
-        // Verify that there is an app installed capable of handling the dial intent
-        if (dialIntent.resolveActivity(requireActivity().packageManager) != null) {
-            startActivity(dialIntent)
-        } else {
-            // Fallback for emulators without telephony hardware or restricted environments
-            startActivity(dialIntent)
-        }
+        startActivity(dialIntent)
     }
 
-    /**
-     * Displays a custom AlertDialog to update the appointment's date and time.
-     */
+    private fun showCancelConfirmationDialog(appointment: Appointment) {
+        if (appointment.status == AppointmentStatus.CANCELLED) {
+            Toast.makeText(requireContext(), "This appointment is already cancelled", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Cancel Appointment")
+            .setMessage("Are you sure you want to cancel the appointment with ${appointment.doctorName} on ${appointment.date}?")
+            .setPositiveButton("Yes, Cancel") { _, _ ->
+                val success = AppointmentRepository.updateStatus(appointment.id, AppointmentStatus.CANCELLED)
+                if (success) {
+                    Toast.makeText(requireContext(), "Appointment cancelled successfully", Toast.LENGTH_SHORT).show()
+                    applyFilters()
+                } else {
+                    Toast.makeText(requireContext(), "Failed to update appointment", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("No", null)
+            .show()
+    }
+
     private fun handleRescheduleClick(appointment: Appointment) {
         val dialogBinding = DialogRescheduleBinding.inflate(layoutInflater)
         val calendar = Calendar.getInstance()
@@ -141,7 +193,6 @@ class MyAppointmentsFragment : Fragment() {
         dialogBinding.etRescheduleDate.setText(appointment.date)
         dialogBinding.etRescheduleTime.setText(appointment.time)
 
-        // Setup DatePicker on dialog date input
         dialogBinding.etRescheduleDate.setOnClickListener {
             val datePicker = DatePickerDialog(
                 requireContext(),
@@ -164,7 +215,6 @@ class MyAppointmentsFragment : Fragment() {
             datePicker.show()
         }
 
-        // Setup TimePicker on dialog time input
         dialogBinding.etRescheduleTime.setOnClickListener {
             val timePicker = TimePickerDialog(
                 requireContext(),
@@ -208,7 +258,7 @@ class MyAppointmentsFragment : Fragment() {
 
                 if (success) {
                     Toast.makeText(requireContext(), "Appointment rescheduled to $newDate at $newTime", Toast.LENGTH_SHORT).show()
-                    loadAppointments()
+                    applyFilters()
                 } else {
                     Toast.makeText(requireContext(), "Failed to reschedule appointment", Toast.LENGTH_SHORT).show()
                 }
@@ -216,34 +266,7 @@ class MyAppointmentsFragment : Fragment() {
             .setNegativeButton("Cancel", null)
             .show()
     }
-    /**
-     * Prompts the user with a confirmation dialog before cancelling an appointment.
-     */
-    private fun showCancelConfirmationDialog(appointment: Appointment) {
-        if (appointment.status == AppointmentStatus.CANCELLED) {
-            Toast.makeText(requireContext(), "This appointment is already cancelled", Toast.LENGTH_SHORT).show()
-            return
-        }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("Cancel Appointment")
-            .setMessage("Are you sure you want to cancel the appointment with ${appointment.doctorName} on ${appointment.date}?")
-            .setPositiveButton("Yes, Cancel") { _, _ ->
-                val success = AppointmentRepository.updateStatus(appointment.id, AppointmentStatus.CANCELLED)
-                if (success) {
-                    Toast.makeText(requireContext(), "Appointment cancelled successfully", Toast.LENGTH_SHORT).show()
-                    loadAppointments()
-                } else {
-                    Toast.makeText(requireContext(), "Failed to update appointment", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNegativeButton("No", null)
-            .show()
-    }
-
-    /**
-     * Prompts the user with an AlertDialog before permanently deleting an appointment.
-     */
     private fun handleDeleteClick(appointment: Appointment) {
         AlertDialog.Builder(requireContext())
             .setTitle("Delete Appointment")
@@ -252,7 +275,7 @@ class MyAppointmentsFragment : Fragment() {
                 val removed = AppointmentRepository.deleteAppointment(appointment.id)
                 if (removed) {
                     Toast.makeText(requireContext(), "Appointment deleted", Toast.LENGTH_SHORT).show()
-                    loadAppointments()
+                    applyFilters()
                 } else {
                     Toast.makeText(requireContext(), "Failed to delete appointment", Toast.LENGTH_SHORT).show()
                 }
