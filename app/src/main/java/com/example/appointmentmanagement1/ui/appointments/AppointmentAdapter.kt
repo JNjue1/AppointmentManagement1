@@ -1,12 +1,12 @@
-package com.example.appointmentmanagement.ui.appointments
+package com.example.appointmentmanagement1.ui.appointments
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.example.appointmentmanagement.databinding.ItemAppointmentBinding
-import com.example.appointmentmanagement.model.Appointment
-import com.example.appointmentmanagement.model.AppointmentStatus
+import com.example.appointmentmanagement1.databinding.ItemAppointmentBinding
+import com.example.appointmentmanagement1.model.Appointment
+import com.example.appointmentmanagement1.model.AppointmentStatus
 
 /**
  * Adapter bridging the Appointment dataset to RecyclerView item rows using Data Binding.
